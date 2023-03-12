@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package io.wks.idrangeapi;
+
+option java_multiple_files = true;
+
+service IdRangeAllocationService {
+  rpc requestIdRange (IdRangeRequest) returns (IdRangeResponse) {}
+}
+
+message IdRangeRequest {
+  string serverId = 1;
+  uint64 size = 2;
+}
+
+message IdRangeResponse {
+  string serverId = 1;
+  uint64 minValue = 2;
+  uint64 maxValue = 3;
+}
