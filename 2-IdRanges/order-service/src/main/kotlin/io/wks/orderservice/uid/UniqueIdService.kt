@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class NextValueGenerationException(sequenceName: String, cause: Throwable? = null) :
     RuntimeException("Failed to generate next value from sequence '$sequenceName'", cause)
 
-class IdSequenceNotFoundException() : RuntimeException("No id sequence found")
+object IdSequenceNotFoundException : RuntimeException("No id sequence found")
 
 @Service
 class UniqueIdService(
@@ -46,24 +46,29 @@ class UniqueIdService(
     }
 
     private fun prepareCache() {
+        if (cache.isNotEmpty()) return
         when (val sequence = uniqueIdSequenceRepository.findFirstByDepletedIsFalse()) {
             null -> requestNewUniqueIdRange() //If no sequence is found, then make an API call to fetch more sequences synchronously. TODO: Retry
-            else -> cache.add(sequence)
+            else -> cache.add(sequence).also {
+                logger.info("Unfinished sequence found: '$sequence'. Enqueued sequences: '$cache'")
+            }
         }
     }
 
     fun nextId(): Long {
         // Get the sequence name from the cache
         val currentIdSequence = cache.peek()
-            ?: throw IdSequenceNotFoundException()
+            ?: throw IdSequenceNotFoundException
 
         // Query nextval from sequence
         val nextId = try {
             jdbcTemplate.queryForObject("""SELECT nextval('${currentIdSequence.name}')""", Long::class.java)
                 ?: throw NextValueGenerationException(currentIdSequence.name)
         } catch (e: DataAccessException) {
+            // This part is not very efficient
             logger.error("Failed to execute nextval on sqequence '${currentIdSequence.name}'", e)
             markSequenceAsDepleted(currentIdSequence)
+            prepareCache()
             return nextId()
         }
 
@@ -88,6 +93,7 @@ class UniqueIdService(
         // - This means that whenever we reach the end of a sequence, there is a bit of a bottleneck.
         // TODO: Can this implementation be improved? There is probably a much smarter, simpler way to do all of this.
         synchronized(deleteLock) {
+            logger.info("Marking '${sequence.name}' as depleted")
             cache.removeIf { it.name == sequence.name }
             uniqueIdSequenceRepository.markSequenceAsDepleted(sequence.name)
         }
@@ -106,6 +112,7 @@ class UniqueIdService(
     }
 
     private fun requestNewUniqueIdRange() {
+        logger.info("Requesting id range. ServerId: '${serverId}', Size: '${fetchIdRangeSize}'")
         // Make a call to id service to get an id range
         val idRangeResponse = idRangeAllocationServiceBlockingStub.requestIdRange(
             IdRangeRequest.newBuilder()
@@ -124,6 +131,7 @@ class UniqueIdService(
 
         // Add the sequence to the cache.
         cache.add(newUniqueIdSequence)
+        logger.info("Enqueued sequences: '$cache'")
 
         // Save the details of the sequence to the db.
         jdbcTemplate.execute("""CREATE SEQUENCE '${newUniqueIdSequence.name}' MINVALUE ${newUniqueIdSequence.minValue} MAXVALUE ${newUniqueIdSequence.maxValue}""")
