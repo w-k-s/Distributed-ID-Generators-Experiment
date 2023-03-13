@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    driver-class-name: "org.postgresql.Driver"
+    url: ""
+    username: ""
+    password: ""
+server:
+  id: ""
+application:
+  ids:
+    fetch:
+      size: 100
+    prefetch:
+      after: 50
