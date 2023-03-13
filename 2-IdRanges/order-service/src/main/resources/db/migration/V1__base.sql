@@ -19,3 +19,4 @@ CREATE TABLE order_service.unique_id_sequences(
     -- Whether all the values in this sequence have been used (as ids).
     is_depleted BOOLEAN NOT NULL DEFAULT FALSE
 );
+
