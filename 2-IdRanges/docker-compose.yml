@@ -1,0 +1,88 @@
+version: "3.9"
+services:
+  
+  id-range-service:
+    image: wkas/id-range-service
+    ports:
+      - 9090:9090
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://id-range-service-db:5432/id_range_allocator"
+      SPRING_DATASOURCE_USERNAME: "admin"
+      SPRING_DATASOURCE_PASSWORD: "password"
+    networks:
+      app:
+        aliases:
+        - id-range-service
+
+  order-service-1:
+    image: wkas/order-service
+    ports:
+      - 8081:8080
+    environment:
+      SERVER_ID: 1
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://order-service-db:5432/order_service"
+      SPRING_DATASOURCE_USERNAME: "admin"
+      SPRING_DATASOURCE_PASSWORD: "password"
+      GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///id-range-service:9090"
+    networks:
+      app:
+        aliases:
+          - order-service
+
+  order-service-2:
+    image: wkas/order-service
+    ports:
+      - 8082:8080
+    environment:
+      SERVER_ID: 2
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://order-service-db:5432/order_service"
+      SPRING_DATASOURCE_USERNAME: "admin"
+      SPRING_DATASOURCE_PASSWORD: "password"
+      GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///id-range-service:9090"
+    networks:
+      app:
+        aliases:
+          - order-service
+
+  order-service-3:
+    image: wkas/order-service
+    ports:
+      - 8083:8080
+    environment:
+      SERVER_ID: 3
+      ERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://order-service-db:5432/order_service"
+      SPRING_DATASOURCE_USERNAME: "admin"
+      SPRING_DATASOURCE_PASSWORD: "password"
+      GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///id-range-service:9090"
+    networks:
+      app:
+        aliases:
+          - order-service
+
+  order-service-db:
+    image: postgres:15.2-alpine
+    environment:
+      POSTGRES_DB: "order_service"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "password"
+    networks:
+      app:
+        aliases:
+          - order-service-db
+
+  id-range-service-db:
+    image: postgres:15.2-alpine
+    environment:
+      POSTGRES_DB: "id_range_allocator"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "password"
+    networks:
+      app:
+        aliases:
+          - id-range-service-db
+
+networks:
+    app:
