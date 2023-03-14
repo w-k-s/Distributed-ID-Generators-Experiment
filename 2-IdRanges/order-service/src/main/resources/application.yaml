@@ -10,5 +10,3 @@ application:
   ids:
     fetch:
       size: 100
-    prefetch:
-      after: 50

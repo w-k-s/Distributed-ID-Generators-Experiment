@@ -8,111 +8,42 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.lang.UnsupportedOperationException
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 class NextValueGenerationException(sequenceName: String, cause: Throwable? = null) :
     RuntimeException("Failed to generate next value from sequence '$sequenceName'", cause)
-
-object IdSequenceNotFoundException : RuntimeException("No id sequence found")
 
 @Service
 class UniqueIdService(
     @GrpcClient("idRangeAllocationService")
     private val idRangeAllocationServiceBlockingStub: IdRangeAllocationServiceBlockingStub,
-    private val uniqueIdSequenceRepository: UniqueIdSequenceRepository,
     private val jdbcTemplate: JdbcTemplate,
     @Value("\${server.id}")
     private val serverId: String,
     @Value("\${application.ids.fetch.size:1000000}")
     private val fetchIdRangeSize: Long,
-    @Value("\${application.ids.prefetch.after:500000}")
-    private val prefetchMinValueOffset: Long,
 ) {
-
-    private val logger = LoggerFactory.getLogger(UniqueIdService::class.java)
-    private val deleteLock = Object()
-
-    private val fetchingIdRange = AtomicBoolean(false)
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(UniqueIdService::class.java)
+        private val SEQUENCE_A = "order_service.seq_unique_id_a"
+        private val SEQUENCE_B = "order_service.seq_unique_id_b"
+    }
 
     private val async = Executors.newSingleThreadExecutor()
 
-    // In-memory cache of the next id ranges to use.
-    private val cache = ConcurrentLinkedQueue<UniqueIdSequence>();
+    private val currentSequence = AtomicReference<String>(SEQUENCE_A)
+    private val isOtherSequenceReady = AtomicBoolean(false)
+    private val fetchingIdRange = AtomicBoolean(false)
 
     init {
-        prepareCache()
+        assignIdRangeToSequence(currentSequence.get())
     }
 
-    private fun prepareCache() {
-        if (cache.isNotEmpty()) return
-        when (val sequence = uniqueIdSequenceRepository.findFirstByDepletedIsFalse()) {
-            null -> requestNewUniqueIdRange() //If no sequence is found, then make an API call to fetch more sequences synchronously. TODO: Retry
-            else -> cache.add(sequence).also {
-                logger.info("Unfinished sequence found: '$sequence'. Enqueued sequences: '$cache'")
-            }
-        }
-    }
-
-    fun nextId(): Long {
-        // Get the sequence name from the cache
-        val currentIdSequence = cache.peek()
-            ?: throw IdSequenceNotFoundException
-
-        // Query nextval from sequence
-        val nextId = try {
-            jdbcTemplate.queryForObject("""SELECT nextval('${currentIdSequence.name}')""", Long::class.java)
-                ?: throw NextValueGenerationException(currentIdSequence.name)
-        } catch (e: DataAccessException) {
-            // This part is not very efficient
-            logger.error("Failed to execute nextval on sqequence '${currentIdSequence.name}'", e)
-            markSequenceAsDepleted(currentIdSequence)
-            prepareCache()
-            return nextId()
-        }
-
-        if (nextId >= currentIdSequence.prefetchValue && cache.size == 1) {
-            requestNewUniqueIdRangeAsync()
-        } else if (nextId == currentIdSequence.maxValue) {
-            markSequenceAsDepleted(currentIdSequence)
-        }
-
-        return nextId
-    }
-
-    private fun markSequenceAsDepleted(sequence: UniqueIdSequence) {
-        // Let's say there are 10 concurrent requests. When we call nextval:
-        // - Thraad 1 gets id = max - 1,
-        // - Thread 2 gets id = max.
-        // - Threads 3-10 cause an exception (because db sequence has already reached max)
-        //
-        // Now:
-        // - Threads 2 - 10 will enter the synchronized method `markSequenceAsDepleted`.
-        // - One of the threads will update the cache and the db, while the other 8 threads wait.
-        // - This means that whenever we reach the end of a sequence, there is a bit of a bottleneck.
-        // TODO: Can this implementation be improved? There is probably a much smarter, simpler way to do all of this.
-        synchronized(deleteLock) {
-            logger.info("Marking '${sequence.name}' as depleted")
-            cache.removeIf { it.name == sequence.name }
-            uniqueIdSequenceRepository.markSequenceAsDepleted(sequence.name)
-        }
-    }
-
-    private fun requestNewUniqueIdRangeAsync() {
-        if (fetchingIdRange.compareAndSet(false, true)) {
-            async.execute {
-                try {
-                    requestNewUniqueIdRange()
-                } finally {
-                    fetchingIdRange.set(false)
-                }
-            }
-        }
-    }
-
-    private fun requestNewUniqueIdRange() {
-        logger.info("Requesting id range. ServerId: '${serverId}', Size: '${fetchIdRangeSize}'")
+    private fun assignIdRangeToSequence(sequenceName: String) {
+        LOGGER.info("Requesting id range for sequence '$sequenceName'. ServerId: '${serverId}', Size: '${fetchIdRangeSize}'")
         // Make a call to id service to get an id range
         val idRangeResponse = idRangeAllocationServiceBlockingStub.requestIdRange(
             IdRangeRequest.newBuilder()
@@ -121,25 +52,43 @@ class UniqueIdService(
                 .build()
         )
 
-        val newUniqueIdSequence = UniqueIdSequence(
-            name = "order_service.seq_unique_ids_" + System.currentTimeMillis(),
-            minValue = idRangeResponse.minValue,
-            maxValue = idRangeResponse.maxValue,
-            prefetchValue = idRangeResponse.minValue + prefetchMinValueOffset,
-            isDepleted = false
-        )
-
-        // Add the sequence to the cache.
-        cache.add(newUniqueIdSequence)
-        logger.info("Enqueued sequences: '$cache'")
-
-        // Save the details of the sequence to the db.
-        jdbcTemplate.execute("""CREATE SEQUENCE '${newUniqueIdSequence.name}' MINVALUE ${newUniqueIdSequence.minValue} MAXVALUE ${newUniqueIdSequence.maxValue}""")
+        // Update the range of the given sequence
+        LOGGER.info("Assigning id range to sequence '$sequenceName'. Min: '${idRangeResponse.minValue}', Max: '${idRangeResponse.maxValue}'")
+        jdbcTemplate.execute("""ALTER SEQUENCE '$sequenceName' RESTART WITH ${idRangeResponse.minValue} MAXVALUE ${idRangeResponse.maxValue}""")
     }
 
-    // TODO: Configure scheduled task
-    private fun deleteDepletedSequences() {
-        uniqueIdSequenceRepository.findByDepletedIsTrue()
-            .forEach { jdbcTemplate.execute("""DROP SEQUENCE IF EXISTS '${it.name}'""") }
+    fun nextId(): Long {
+        // Get the sequence name from the cache
+        val currentIdSequence = currentSequence.get()
+
+        // Query nextval from sequence
+        val nextId = try {
+            jdbcTemplate.queryForObject("""SELECT nextval('$currentIdSequence')""", Long::class.java)
+                ?: throw NextValueGenerationException(currentIdSequence)
+        } catch (e: DataAccessException) {
+            LOGGER.warn("Failed to execute nextval on sqequence '$currentIdSequence'", e)
+            currentSequence.compareAndSet(currentIdSequence, otherSequenceOf(currentIdSequence))
+            isOtherSequenceReady.compareAndSet(true, false)
+            return nextId()
+        }
+
+        if (!isOtherSequenceReady.get() && fetchingIdRange.compareAndSet(false, true)) {
+            async.execute {
+                try {
+                    assignIdRangeToSequence(otherSequenceOf(currentIdSequence))
+                    isOtherSequenceReady.set(true)
+                } finally {
+                    fetchingIdRange.set(false)
+                }
+            }
+        }
+
+        return nextId
+    }
+
+    private fun otherSequenceOf(sequenceName: String) = when (sequenceName) {
+        SEQUENCE_A -> SEQUENCE_B
+        SEQUENCE_B -> SEQUENCE_A
+        else -> throw UnsupportedOperationException("sequenceName expected to be either '$SEQUENCE_A' or '$SEQUENCE_B'. Unexpected sequence name: '$sequenceName'")
     }
 }
