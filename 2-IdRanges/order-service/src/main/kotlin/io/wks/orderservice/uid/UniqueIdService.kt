@@ -1,6 +1,5 @@
 package io.wks.orderservice.uid
 
-import io.wks.idrangeapi.IdRangeAllocationServiceGrpc
 import io.wks.idrangeapi.IdRangeAllocationServiceGrpc.IdRangeAllocationServiceBlockingStub
 import io.wks.idrangeapi.IdRangeRequest
 import net.devh.boot.grpc.client.inject.GrpcClient
@@ -8,7 +7,13 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.retry.RetryCallback
+import org.springframework.retry.backoff.FixedBackOffPolicy
+import org.springframework.retry.policy.TimeoutRetryPolicy
+import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
+import java.net.ConnectException
+import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -43,7 +48,20 @@ class UniqueIdService(
     init {
         createSequences()
         currentSequence.set(sequenceA)
-        assignIdRangeToSequence(currentSequence.get())
+        assignIdRangeToSequenceWithRetries()
+    }
+
+    private fun assignIdRangeToSequenceWithRetries() {
+        RetryTemplate().apply {
+            setBackOffPolicy(FixedBackOffPolicy().also {
+                it.backOffPeriod = Duration.ofSeconds(30).toMillis()
+            });
+            setRetryPolicy(TimeoutRetryPolicy().also {
+                it.timeout = Duration.ofMinutes(3).toMillis()
+            })
+        }.execute(RetryCallback<Unit, ConnectException> {
+            assignIdRangeToSequence(currentSequence.get())
+        })
     }
 
     private fun createSequences() {

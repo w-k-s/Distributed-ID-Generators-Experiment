@@ -5,19 +5,33 @@ services:
     image: wkas/id-range-service
     ports:
       - 9090:9090
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 60s
+      timeout: 30s
+      retries: 5
     environment:
+      SERVER_PORT: 8080
       SPRING_DATASOURCE_URL: "jdbc:postgresql://id-range-service-db:5432/id_range_allocator"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "password"
+    depends_on:
+      - id-range-service-db
     networks:
       app:
         aliases:
-        - id-range-service
+          - id-range-service
 
   order-service-1:
     image: wkas/order-service
     ports:
       - 8081:8080
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+    restart: always
     environment:
       SERVER_ID: 1
       SERVER_PORT: 8080
@@ -25,6 +39,9 @@ services:
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "password"
       GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///id-range-service:9090"
+    depends_on:
+      - id-range-service
+      - order-service-db
     networks:
       app:
         aliases:
@@ -34,6 +51,12 @@ services:
     image: wkas/order-service
     ports:
       - 8082:8080
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+    restart: always
     environment:
       SERVER_ID: 2
       SERVER_PORT: 8080
@@ -41,6 +64,9 @@ services:
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "password"
       GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///id-range-service:9090"
+    depends_on:
+      - id-range-service
+      - order-service-db
     networks:
       app:
         aliases:
@@ -50,6 +76,12 @@ services:
     image: wkas/order-service
     ports:
       - 8083:8080
+    restart: always
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 60s
+      timeout: 30s
+      retries: 5
     environment:
       SERVER_ID: 3
       ERVER_PORT: 8080
@@ -57,6 +89,9 @@ services:
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "password"
       GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///id-range-service:9090"
+    depends_on:
+      - id-range-service
+      - order-service-db
     networks:
       app:
         aliases:
@@ -83,6 +118,18 @@ services:
       app:
         aliases:
           - id-range-service-db
+
+  loadbalancer:
+    build:
+      context: load-balancer
+    ports:
+      - 8080:80
+    depends_on:
+      - order-service-1
+      - order-service-2
+      - order-service-3
+    networks:
+      app:
 
 networks:
     app:
