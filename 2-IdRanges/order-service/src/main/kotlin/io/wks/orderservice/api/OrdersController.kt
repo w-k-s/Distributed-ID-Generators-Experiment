@@ -2,6 +2,7 @@ package io.wks.orderservice.orders
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import java.time.OffsetDateTime
 
@@ -34,5 +35,5 @@ class OrdersController(
     private val orderService: OrderService
 ) {
     @PostMapping("/api/v1/orders")
-    fun createOrder(request: OrderRequest) = orderService.createOrder(request)
+    fun createOrder(@RequestBody request: OrderRequest) = orderService.createOrder(request)
 }

@@ -1,5 +1,6 @@
 package io.wks.orderservice.uid
 
+import io.wks.idrangeapi.IdRangeAllocationServiceGrpc
 import io.wks.idrangeapi.IdRangeAllocationServiceGrpc.IdRangeAllocationServiceBlockingStub
 import io.wks.idrangeapi.IdRangeRequest
 import net.devh.boot.grpc.client.inject.GrpcClient
@@ -8,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
-import java.lang.UnsupportedOperationException
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -18,28 +18,38 @@ class NextValueGenerationException(sequenceName: String, cause: Throwable? = nul
 
 @Service
 class UniqueIdService(
-    @GrpcClient("idRangeAllocationService")
+    @GrpcClient("id-range-service")
     private val idRangeAllocationServiceBlockingStub: IdRangeAllocationServiceBlockingStub,
     private val jdbcTemplate: JdbcTemplate,
     @Value("\${server.id}")
-    private val serverId: String,
+    private val serverId: Long,
     @Value("\${application.ids.fetch.size:1000000}")
     private val fetchIdRangeSize: Long,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(UniqueIdService::class.java)
-        private val SEQUENCE_A = "order_service.seq_unique_id_a"
-        private val SEQUENCE_B = "order_service.seq_unique_id_b"
     }
+
+    private val schemaName = "server_$serverId"
+    private val sequenceA = "$schemaName.seq_unique_id_a"
+    private val sequenceB = "$schemaName.seq_unique_id_b"
 
     private val async = Executors.newSingleThreadExecutor()
 
-    private val currentSequence = AtomicReference<String>(SEQUENCE_A)
+    private val currentSequence = AtomicReference<String>()
     private val isOtherSequenceReady = AtomicBoolean(false)
     private val fetchingIdRange = AtomicBoolean(false)
 
     init {
+        createSequences()
+        currentSequence.set(sequenceA)
         assignIdRangeToSequence(currentSequence.get())
+    }
+
+    private fun createSequences() {
+        jdbcTemplate.execute("CREATE SCHEMA IF NOT EXISTS $schemaName")
+        jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS $sequenceA")
+        jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS $sequenceB")
     }
 
     private fun assignIdRangeToSequence(sequenceName: String) {
@@ -47,14 +57,14 @@ class UniqueIdService(
         // Make a call to id service to get an id range
         val idRangeResponse = idRangeAllocationServiceBlockingStub.requestIdRange(
             IdRangeRequest.newBuilder()
-                .setServerId(serverId)
+                .setServerId(serverId.toString())
                 .setSize(fetchIdRangeSize)
                 .build()
         )
 
         // Update the range of the given sequence
         LOGGER.info("Assigning id range to sequence '$sequenceName'. Min: '${idRangeResponse.minValue}', Max: '${idRangeResponse.maxValue}'")
-        jdbcTemplate.execute("""ALTER SEQUENCE '$sequenceName' RESTART WITH ${idRangeResponse.minValue} MAXVALUE ${idRangeResponse.maxValue}""")
+        jdbcTemplate.execute("""ALTER SEQUENCE $sequenceName RESTART WITH ${idRangeResponse.minValue} MAXVALUE ${idRangeResponse.maxValue}""")
     }
 
     fun nextId(): Long {
@@ -87,8 +97,8 @@ class UniqueIdService(
     }
 
     private fun otherSequenceOf(sequenceName: String) = when (sequenceName) {
-        SEQUENCE_A -> SEQUENCE_B
-        SEQUENCE_B -> SEQUENCE_A
-        else -> throw UnsupportedOperationException("sequenceName expected to be either '$SEQUENCE_A' or '$SEQUENCE_B'. Unexpected sequence name: '$sequenceName'")
+        sequenceA -> sequenceB
+        sequenceB -> sequenceA
+        else -> throw UnsupportedOperationException("sequenceName expected to be either '$sequenceA' or '$sequenceB'. Unexpected sequence name: '$sequenceName'")
     }
 }

@@ -1,14 +1,10 @@
 package io.wks.orderservice.orders
 
-import org.springframework.data.annotation.Id
-import org.springframework.data.relational.core.mapping.Table
 import java.time.Clock
 import java.time.OffsetDateTime
 
-
-@Table("order_service.orders")
 data class Order(
-    @Id
+
     val id: Long,
     /**
      * Name of the customer

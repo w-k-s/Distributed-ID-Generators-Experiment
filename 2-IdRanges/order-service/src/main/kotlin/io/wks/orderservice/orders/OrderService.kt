@@ -20,7 +20,7 @@ class OrderService(
                 id = uniqueIdService.nextId(),
                 customer = request.customer,
                 meal = request.meal,
-                createdBy = serverId,
+                createdBy = "Server $serverId",
             )
         ) {
             orderRepository.save(this)
