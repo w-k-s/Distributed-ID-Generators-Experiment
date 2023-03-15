@@ -52,10 +52,13 @@ jobs:
         run: |
           sudo apt-get -qq update -y
           sudo apt-get -qq install postgresql-client -y
-          ls /usr/lib/postgresql/
-          which pg_dump
-          pg_dump --data-only --file=~/order_service.sql --schema=order_service --no-comments --host=localhost --port=5432 --username=admin --password=password order_service
-          pg_dump --data-only --file=~/id_range_allocator.sql --schema=id_range_allocator --no-comments --host=localhost --port=5433 --username=admin --password=password id_range_allocator
+          
+          echo "localhost:5432:order_service:admin:password" >  ~/.pgpass
+          chmod 600 ~/.pgpass
+          pg_dump --data-only --file=~/order_service.sql --schema=order_service --no-comments --host=localhost --port=5432 --username=admin --no-password order_service
+
+          echo "localhost:5433:id_range_allocator:admin:password" >  ~/.pgpass
+          pg_dump --data-only --file=~/id_range_allocator.sql --schema=id_range_allocator --no-comments --host=localhost --port=5433 --username=admin --no-password id_range_allocator
       - name: Upload Order Service DB Dump
         uses: actions/upload-artifact@v3
         with:
