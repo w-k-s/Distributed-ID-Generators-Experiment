@@ -43,28 +43,28 @@ jobs:
           sudo apt-get install apache2-utils -y
           echo '{"customer":"John Doe", "meal":"Lobster"}' > ~/payload.json
           ab -c ${{ inputs.concurrency }}  -T application/json -p ~/payload.json  -n ${{ inputs.requests }} -l http://localhost:8080/api/v1/orders/ > ~/results.txt 2>&1
-      - name: Download Order Service DB Dump
-        uses: tj-actions/pg-dump@v2.3
-        with:
-          database_url: "postgres://admin:password@localhost:5432/order_service"
-          path: "~/order_service.sql" 
-          options: "--schema=order_service --data-only"  
-      - name: Download Id Range Allocator DB Dump
-        uses: tj-actions/pg-dump@v2.3
-        with:
-          database_url: "postgres://admin:password@localhost:5432/id_range_allocator"
-          path: "~/id_range_allocator.sql" 
-          options: "--schema=id_range_allocator --data-only"  
       - name: Upload benchmark results
         uses: actions/upload-artifact@v3
         with:
           name: Benchmark-Results.txt
           path: ~/results.txt
+      - name: Dump Order Service DB
+        uses: tj-actions/pg-dump@v2.5
+        with:
+          database_url: "postgres://admin:password@localhost:5432/order_service"
+          path: "~/order_service.sql" 
+          options: "--schema=order_service --data-only"  
       - name: Upload Order Service DB Dump
         uses: actions/upload-artifact@v3
         with:
           name: Order-Service-DB-Dump.sql
           path: ~/order_service.sql
+      - name: Dump Id Range Allocator DB
+        uses: tj-actions/pg-dump@v2.5
+        with:
+          database_url: "postgres://admin:password@localhost:5432/id_range_allocator"
+          path: "~/id_range_allocator.sql" 
+          options: "--schema=id_range_allocator --data-only"  
       - name: Upload Id Range Allocator DB Dump
         uses: actions/upload-artifact@v3
         with:
