@@ -103,6 +103,8 @@ services:
       POSTGRES_DB: "order_service"
       POSTGRES_USER: "admin"
       POSTGRES_PASSWORD: "password"
+    ports:
+      5432:5432
     networks:
       app:
         aliases:
