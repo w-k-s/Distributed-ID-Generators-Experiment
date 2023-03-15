@@ -39,8 +39,8 @@ jobs:
           retry-delay: 30s
       - name: Run Benchmark Tests
         run: |
-          apt-get update -y
-          apt-get install apache2-utils -y
+          sudo apt-get update -y
+          sudo apt-get install apache2-utils -y
           echo '{"customer":"John Doe", "meal":"Lobster"}' > ~/payload.json
           ab -c ${{ inputs.concurrency }}  -T application/json -p ~/payload.json  -n ${{ inputs.requests }} -l http://localhost:8080/api/v1/orders/ > ~/results.txt 2>&1
       - name: Download Order Service DB Dump
