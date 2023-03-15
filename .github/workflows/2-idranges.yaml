@@ -38,7 +38,7 @@ jobs:
           max-attempts: 10 
           retry-delay: 30s
       - name: Run Benchmark Tests
-        run: >
+        run: |
           apt-get update -y
           apt-get install apache2-utils -y
           echo '{"customer":"John Doe", "meal":"Lobster"}' > ~/payload.json
