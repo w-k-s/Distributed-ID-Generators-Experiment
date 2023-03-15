@@ -112,6 +112,8 @@ services:
 
   id-range-service-db:
     image: postgres:15.2-alpine
+    ports:
+      - 5434:5432
     environment:
       POSTGRES_DB: "id_range_allocator"
       POSTGRES_USER: "admin"
