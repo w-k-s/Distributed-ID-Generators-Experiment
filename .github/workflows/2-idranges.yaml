@@ -58,8 +58,8 @@ jobs:
 
           pg_dump --data-only --schema=order_service --no-comments --host=localhost --port=5432 --username=admin --no-password order_service > ~/order_service.sql
 
-          echo "localhost:5433:id_range_allocator:admin:password" >  ~/.pgpass
-          pg_dump --data-only --schema=id_range_allocator --no-comments --host=localhost --port=5433 --username=admin --no-password id_range_allocator > ~/id_range_allocator.sql
+          echo "localhost:5434:id_range_allocator:admin:password" >  ~/.pgpass
+          pg_dump --data-only --schema=id_range_allocator --no-comments --host=localhost --port=5434 --username=admin --no-password id_range_allocator > ~/id_range_allocator.sql
       - name: Upload Order Service DB Dump
         uses: actions/upload-artifact@v3
         with:
