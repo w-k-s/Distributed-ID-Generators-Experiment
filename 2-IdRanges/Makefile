@@ -19,4 +19,8 @@ build-order-service-image:
 	cd order-service && docker build -t wkas/order-service . && cd ..
 
 docker-deploy: build-images
-	docker compose up -d
+	docker compose up -d --build
+
+docker-destroy:
+	docker compose kill
+	docker container prune -f 
