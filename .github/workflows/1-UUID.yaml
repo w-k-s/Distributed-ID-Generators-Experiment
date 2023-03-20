@@ -1,4 +1,4 @@
-name: "2. ID Ranges - Benchmark"
+name: "1. UUIDs - Benchmark"
 
 on:
   workflow_dispatch:
