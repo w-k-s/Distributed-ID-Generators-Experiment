@@ -1,0 +1,64 @@
+name: "2. Snowflake - Benchmark"
+
+on:
+  workflow_dispatch:
+    inputs:
+      requests:
+        type: string
+        description: Number of requests to perform for the benchmarking session
+        default: '1000'
+      concurrency:
+        type: string
+        description: Number of multiple requests to perform at a time
+        default: '10'
+    branches:
+      - master
+
+jobs:
+  Benchmark:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./3-Snowflake
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+          cache: maven
+      - name: Build & Deploy
+        run: make docker-deploy
+      - name: Wait until order-service is healthy
+        uses: jtalk/url-health-check-action@v3
+        with:
+          url: http://localhost:8080/actuator/health
+          max-attempts: 10 
+          retry-delay: 30s
+      - name: Run Benchmark Tests
+        run: |
+          sudo apt-get -qq update -y
+          sudo apt-get -qq install apache2-utils -y
+          echo '{"customer":"John Doe", "meal":"Lobster"}' > ~/payload.json
+          ab -c ${{ inputs.concurrency }}  -T application/json -p ~/payload.json  -n ${{ inputs.requests }} -l http://localhost:8080/api/v1/orders > ~/results.txt
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: Benchmark-Results.txt
+          path: ~/results.txt
+      - name: Dump Databases
+        run: |
+          sudo apt-get -qq update -y
+          sudo apt-get -qq install postgresql-client -y
+          
+          echo "localhost:5432:order_service:admin:password" >  ~/.pgpass
+          chmod 600 ~/.pgpass
+
+          pg_dump --data-only --schema=order_service --no-comments --host=localhost --port=5432 --username=admin --no-password order_service > ~/order_service.sql
+      - name: Upload Order Service DB Dump
+        uses: actions/upload-artifact@v3
+        with:
+          name: Order-Service-DB-Dump.sql
+          path: ~/order_service.sql
