@@ -29,10 +29,10 @@ class IdWorker(
 
     init {
         require(workerId in 1 until MAX_WORKED_ID) {
-            """worker Id can't be greater than $MAX_DATA_CENTER_ID or less than 0"""
+            """worker Id can't be greater than $MAX_DATA_CENTER_ID or less than 0: $workerId"""
         }
         require(datacenterId in 1 until MAX_DATA_CENTER_ID) {
-            """datacenter Id can't be greater than $MAX_DATA_CENTER_ID or less than 0"""
+            """datacenter Id can't be greater than $MAX_DATA_CENTER_ID or less than 0: $datacenterId"""
         }
     }
 
