@@ -1,10 +1,26 @@
 version: "3.9"
 services:
 
-  snowflake-service:
+  service-registry:
+    image: wkas/service-registry
+    container_name: service-registry
+    restart: always
+    networks:
+      - app
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+    environment:
+      SERVER_PORT: 8761
+
+  snowflake-service-1:
     image: wkas/snowflake-service
     ports:
-      - 9090:9090
+      - "9091:9090"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 60s
@@ -12,6 +28,44 @@ services:
       retries: 5
     environment:
       SERVER_PORT: 8080
+      SPRING_APPLICATION_NAME: "snowflake-service"
+      EUREKA_URI: "http://service-registry:8761/eureka"
+    networks:
+      app:
+        aliases:
+          - snowflake-service
+
+  snowflake-service-2:
+    image: wkas/snowflake-service
+    ports:
+      - "9092:9090"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+    environment:
+      SERVER_PORT: 8080
+      SPRING_APPLICATION_NAME: "snowflake-service"
+      EUREKA_URI: "http://service-registry:8761/eureka"
+    networks:
+      app:
+        aliases:
+          - snowflake-service
+
+  snowflake-service-3:
+    image: wkas/snowflake-service
+    ports:
+      - "9093:9090"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+    environment:
+      SERVER_PORT: 8080
+      SPRING_APPLICATION_NAME: "snowflake-service"
+      EUREKA_URI: "http://service-registry:8761/eureka"
     networks:
       app:
         aliases:
@@ -20,7 +74,7 @@ services:
   order-service-1:
     image: wkas/order-service
     ports:
-      - 8081:8080
+      - "8081:8080"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 60s
@@ -33,9 +87,9 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://order-service-db:5432/order_service"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "password"
-      GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///snowflake-service:9090"
+      GRPC_CLIENT_GLOBAL_ADDRESS: "discovery:///snowflake-service"
+      EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - snowflake-service
       - order-service-db
     networks:
       app:
@@ -45,7 +99,7 @@ services:
   order-service-2:
     image: wkas/order-service
     ports:
-      - 8082:8080
+      - "8082:8080"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 60s
@@ -58,9 +112,9 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://order-service-db:5432/order_service"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "password"
-      GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///snowflake-service:9090"
+      GRPC_CLIENT_GLOBAL_ADDRESS: "discovery:///snowflake-service"
+      EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - snowflake-service
       - order-service-db
     networks:
       app:
@@ -70,7 +124,7 @@ services:
   order-service-3:
     image: wkas/order-service
     ports:
-      - 8083:8080
+      - "8083:8080"
     restart: always
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
@@ -83,9 +137,9 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://order-service-db:5432/order_service"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "password"
-      GRPC_CLIENT_GLOBAL_ADDRESS: "dns:///snowflake-service:9090"
+      GRPC_CLIENT_GLOBAL_ADDRESS: "discovery:///snowflake-service"
+      EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - snowflake-service
       - order-service-db
     networks:
       app:
@@ -109,7 +163,7 @@ services:
     build:
       context: load-balancer
     ports:
-      - 8080:80
+      - "8080:80"
     depends_on:
       - order-service-1
       - order-service-2

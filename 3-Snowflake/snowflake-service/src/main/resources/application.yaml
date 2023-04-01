@@ -1,6 +1,15 @@
 spring:
   application:
     name: snowflake-service
+grpc:
+  server:
+    port: 9090
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    preferIpAddress: true
 app:
   worker:
     id: ${random.int(1,31)}
