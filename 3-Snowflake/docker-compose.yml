@@ -31,7 +31,8 @@ services:
       SPRING_APPLICATION_NAME: "snowflake-service"
       EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - service-registry
+      service-registry:
+        condition: service_healthy
     networks:
       app:
         aliases:
@@ -51,7 +52,8 @@ services:
       SPRING_APPLICATION_NAME: "snowflake-service"
       EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - service-registry
+      service-registry:
+        condition: service_healthy
     networks:
       app:
         aliases:
@@ -71,7 +73,8 @@ services:
       SPRING_APPLICATION_NAME: "snowflake-service"
       EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - service-registry
+      service-registry:
+        condition: service_healthy
     networks:
       app:
         aliases:
@@ -96,10 +99,14 @@ services:
       GRPC_CLIENT_GLOBAL_ADDRESS: "discovery:///snowflake-service"
       EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - snowflake-service-1
-      - snowflake-service-2
-      - snowflake-service-3
-      - order-service-db
+      order-service-db:
+        condition: service_started
+      snowflake-service-1:
+        condition: service_healthy
+      snowflake-service-2:
+        condition: service_started
+      snowflake-service-3:
+        condition: service_started
     networks:
       app:
         aliases:
@@ -124,10 +131,14 @@ services:
       GRPC_CLIENT_GLOBAL_ADDRESS: "discovery:///snowflake-service"
       EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - snowflake-service-1
-      - snowflake-service-2
-      - snowflake-service-3
-      - order-service-db
+      order-service-db:
+        condition: service_started
+      snowflake-service-1:
+        condition: service_started
+      snowflake-service-2:
+        condition: service_healthy
+      snowflake-service-3:
+        condition: service_started
     networks:
       app:
         aliases:
@@ -152,10 +163,14 @@ services:
       GRPC_CLIENT_GLOBAL_ADDRESS: "discovery:///snowflake-service"
       EUREKA_URI: "http://service-registry:8761/eureka"
     depends_on:
-      - snowflake-service-1
-      - snowflake-service-2
-      - snowflake-service-3
-      - order-service-db
+      order-service-db:
+        condition: service_started
+      snowflake-service-1:
+        condition: service_started
+      snowflake-service-2:
+        condition: service_started
+      snowflake-service-3:
+        condition: service_healthy
     networks:
       app:
         aliases:
@@ -180,9 +195,12 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - order-service-1
-      - order-service-2
-      - order-service-3
+      order-service-1:
+        condition: service_healthy
+      order-service-2:
+        condition: service_healthy
+      order-service-3:
+        condition: service_healthy
     networks:
       app:
 
