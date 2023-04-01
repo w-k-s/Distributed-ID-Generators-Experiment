@@ -42,7 +42,7 @@ jobs:
           sudo apt-get -qq update -y
           sudo apt-get -qq install apache2-utils -y
           echo '{"customer":"John Doe", "meal":"Lobster"}' > ~/payload.json
-          ab -c ${{ inputs.concurrency }}  -T application/json -p ~/payload.json  -n ${{ inputs.requests }} -t 300 -l http://localhost:8080/api/v1/orders > ~/results.txt
+          ab -c ${{ inputs.concurrency }}  -T application/json -p ~/payload.json  -n ${{ inputs.requests }} -l http://localhost:8080/api/v1/orders > ~/results.txt
       - name: Upload benchmark results
         uses: actions/upload-artifact@v3
         with:
