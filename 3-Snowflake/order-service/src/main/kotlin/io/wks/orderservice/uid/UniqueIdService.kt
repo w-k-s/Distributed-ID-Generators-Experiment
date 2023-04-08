@@ -1,8 +1,6 @@
 package io.wks.orderservice.uid
 
-import io.wks.snowflake.api.SnowflakeRequest
-import io.wks.snowflake.api.SnowflakeServiceGrpc
-import net.devh.boot.grpc.client.inject.GrpcClient
+import io.wks.snowflake.Snowflake
 import org.springframework.stereotype.Service
 
 interface UniqueIdService {
@@ -11,9 +9,8 @@ interface UniqueIdService {
 
 @Service
 class SnowflakeIdService(
-    @GrpcClient("snowflake-service")
-    private val snowflakeRpc: SnowflakeServiceGrpc.SnowflakeServiceBlockingStub,
+    private val snowflake: Snowflake
 ) : UniqueIdService {
 
-    override fun nextId() = snowflakeRpc.newId(SnowflakeRequest.getDefaultInstance()).id
+    override fun nextId() = snowflake.nextId()
 }

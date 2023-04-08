@@ -16,8 +16,7 @@
     <properties>
         <java.version>17</java.version>
         <kotlin.version>1.7.22</kotlin.version>
-        <grpc-spring.version>2.14.0.RELEASE</grpc-spring.version>
-        <snowflake-api.version>1.0-SNAPSHOT</snowflake-api.version>
+        <snowflake.version>1.0-SNAPSHOT</snowflake.version>
         <retry.version>1.2.5.RELEASE</retry.version>
     </properties>
     <dependencies>
@@ -32,11 +31,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.retry</groupId>
-            <artifactId>spring-retry</artifactId>
-            <version>${retry.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
@@ -55,21 +49,15 @@
             <artifactId>kotlin-stdlib-jdk8</artifactId>
         </dependency>
         <dependency>
-            <groupId>net.devh</groupId>
-            <artifactId>grpc-client-spring-boot-starter</artifactId>
-            <version>${grpc-spring.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>net.devh</groupId>
-            <artifactId>grpc-client-spring-boot-starter</artifactId>
-            <version>${grpc-spring.version}</version>
-        </dependency>
-        <dependency>
             <groupId>io.wks</groupId>
-            <artifactId>snowflake-api</artifactId>
-            <version>${snowflake-api.version}</version>
+            <artifactId>snowflake</artifactId>
+            <version>${snowflake.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+            <version>4.0.1</version>
+        </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

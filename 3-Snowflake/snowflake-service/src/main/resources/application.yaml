@@ -1,8 +1,0 @@
-spring:
-  application:
-    name: snowflake-service
-app:
-  worker:
-    id: ${random.int(1,31)}
-  datacenter:
-    id: 1

@@ -1,24 +1,24 @@
 docker-deploy: build-images
 	docker compose up -d --build
 
-build-images: build-project build-snowflake-service-image build-order-service-image
+build-images: build-project build-order-service-image build-service-registry-image
 
-build-project: build-snowflake-api build-snowflake-service build-order-service
+build-project: build-snowflake build-order-service build-service-registry
 
-build-snowflake-api: snowflake-api
-	cd snowflake-api && mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean install && cd ..
+build-service-registry: service-registry
+	cd service-registry && mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean package -DskipTests  && cd ..
 
-build-snowflake-service: snowflake-service
-	cd snowflake-service && mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean package -DskipTests && cd ..
+build-snowflake: snowflake
+	cd snowflake && mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean install && cd ..
 
 build-order-service: order-service
 	cd order-service && mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean package -DskipTests  && cd ..
 
-build-snowflake-service-image:
-	cd snowflake-service && docker build -t wkas/snowflake-service . && cd ..
-
 build-order-service-image:
 	cd order-service && docker build -t wkas/order-service . && cd ..
+
+build-service-registry-image:
+	cd service-registry && docker build -t wkas/service-registry . && cd ..
 
 docker-destroy:
 	docker compose kill
