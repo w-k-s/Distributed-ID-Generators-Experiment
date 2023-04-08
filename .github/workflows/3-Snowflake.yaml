@@ -1,4 +1,4 @@
-name: "2. Snowflake - Benchmark"
+name: "3. Snowflake - Benchmark"
 
 on:
   workflow_dispatch:
@@ -35,8 +35,8 @@ jobs:
         uses: jtalk/url-health-check-action@v3
         with:
           url: http://localhost:8080/actuator/health
-          max-attempts: 10 
-          retry-delay: 30s
+          max-attempts: 20
+          retry-delay: 60s
       - name: Run Benchmark Tests
         run: |
           sudo apt-get -qq update -y
