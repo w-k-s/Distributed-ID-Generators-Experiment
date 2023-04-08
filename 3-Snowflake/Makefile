@@ -23,3 +23,6 @@ build-service-registry-image:
 docker-destroy:
 	docker compose kill
 	docker container prune -f 
+
+docker-logs:
+	docker compose logs -f --tail=0
