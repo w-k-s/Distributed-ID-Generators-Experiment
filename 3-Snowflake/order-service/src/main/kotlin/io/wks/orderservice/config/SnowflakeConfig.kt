@@ -12,7 +12,7 @@ class SnowflakeConfig(private val eurekaClient: EurekaClient) {
     fun snowflake() =
         Snowflake(
             nodeId = Snowflake.withNodeId(
-                eurekaClient.applicationInfoManager.info.instanceId.toString().hashCode().toLong(),
+                eurekaClient.applicationInfoManager.info.instanceId.hashCode().toLong(),
                 mask = true
             )
         )

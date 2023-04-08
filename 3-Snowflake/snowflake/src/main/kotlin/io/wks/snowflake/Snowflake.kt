@@ -46,7 +46,10 @@ class Snowflake(
         } else nodeId
     }
 
+    @Volatile
     private var sequence: Long = 0L
+
+    @Volatile
     private var lastTimestamp: Long = -1L
 
     init {
@@ -66,7 +69,7 @@ class Snowflake(
         if (lastTimestamp == timestamp) {
             // If more than 1 id is requested per millisecond, then increment the sequence number.
             // Ensure, though, that the sequence is no longer than 12 bits.
-            sequence = (sequence + 1) or SEQUENCE_MASK
+            sequence = (sequence + 1) and SEQUENCE_MASK
             if (sequence == 0L) {
                 // If after masking, the sequence is 0, then use a different timestamp
                 timestamp = nextTimestampAfter(lastTimestamp)
