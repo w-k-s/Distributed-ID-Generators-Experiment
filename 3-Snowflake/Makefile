@@ -1,5 +1,6 @@
 docker-deploy: build-images
-	docker compose up -d --build
+	docker-compose rm -f
+	docker-compose up -d --build --force-recreate
 
 build-images: build-project build-order-service-image build-service-registry-image
 
@@ -22,7 +23,6 @@ build-service-registry-image:
 
 docker-destroy:
 	docker compose kill
-	docker container prune -f 
 
 docker-logs:
 	docker compose logs -f --tail=0
